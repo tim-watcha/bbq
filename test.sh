@@ -103,8 +103,8 @@ echo ""
 
 # --- Allowed subcommands ---
 echo "## Allowed subcommands"
-assert_allowed "ls"                            ls
-assert_allowed "version"                       version
+assert_not_blocked "ls"                        ls
+assert_not_blocked "version"                   version
 # bq help exits with code 1 (bq behavior, not bbq blocking), so we verify
 # bbq does NOT print its own block message
 assert_not_blocked "help"                      help
@@ -112,9 +112,9 @@ echo ""
 
 # --- Allowed queries ---
 echo "## Allowed queries"
-assert_allowed "SELECT 1"                      query --nouse_legacy_sql 'SELECT 1'
-assert_allowed "WITH CTE"                      query --nouse_legacy_sql 'WITH cte AS (SELECT 1 AS x) SELECT * FROM cte'
-assert_allowed "select lowercase"              query --nouse_legacy_sql 'select 1'
+assert_not_blocked "SELECT 1"                  query --nouse_legacy_sql 'SELECT 1'
+assert_not_blocked "WITH CTE"                  query --nouse_legacy_sql 'WITH cte AS (SELECT 1 AS x) SELECT * FROM cte'
+assert_not_blocked "select lowercase"          query --nouse_legacy_sql 'select 1'
 # bq may fail with invalid project, but bbq should not block it
 assert_not_blocked "SELECT with --project_id"  query --nouse_legacy_sql --project_id=my-project 'SELECT 1'
 echo ""

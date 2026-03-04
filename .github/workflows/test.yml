@@ -20,8 +20,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
       - name: Run tests
         run: ./test.sh
