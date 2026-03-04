@@ -21,11 +21,13 @@ usage() {
     bbq <command> [flags] [args]
 
   Examples:
-    bbq query --nouse_legacy_sql 'SELECT * FROM dataset.table LIMIT 10'
+    bbq query --nouse_legacy_sql --format=json 'SELECT * FROM dataset.table LIMIT 10'
     bbq ls
-    bbq show dataset.table
+    bbq show --format=json dataset.table
     bbq head -n 5 dataset.table
     bbq mk my_new_dataset
+
+  Tip: Use --format=json for machine-readable output (recommended for AI agents).
 
   Allowed commands:
     query         Run SELECT/WITH queries (DML/DDL blocked)
