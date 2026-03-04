@@ -7,6 +7,14 @@ on:
     branches: [main]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck
+        run: shellcheck bbq install.sh test.sh
+
   test:
     runs-on: ubuntu-latest
     steps:
