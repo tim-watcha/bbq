@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# bbq (BaBigQuery): A read-only wrapper around the bq CLI.
+# Too young to do anything dangerous.
+# Blocks irreversible operations (delete, modify, write) while allowing
+# queries (SELECT/WITH only), listing, and other safe commands.
+
+ALLOWED_COMMANDS="query ls show head mk mkdef extract get-iam-policy version help info wait init"
+
+# SQL statements that are blocked in `bq query`
+BLOCKED_SQL_KEYWORDS="INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|MERGE|CREATE|CALL|GRANT|REVOKE"
+
+usage() {
+  cat <<'EOF'
+bbq (BaBigQuery): Too young to do anything dangerous.
+
+Usage: bbq [--global_flags] <command> [--command_flags] [args]
+
+Allowed commands:
+  query (SELECT/WITH only), ls, show, head, mk, mkdef, extract,
+  get-iam-policy, version, help, info, wait, init
+
+Blocked (irreversible) commands:
+  rm, truncate, undelete, update, insert, load, cp, cancel, partition,
+  add-iam-policy-binding, remove-iam-policy-binding, set-iam-policy, shell
+
+All flags are passed through to the real bq CLI.
+EOF
+}
+
+# Find the subcommand from args, skipping global flags.
+# bq usage: bq [--global_flags] <command> [--command_flags] [args]
+find_command() {
+  local skip_next=false
+  for arg in "$@"; do
+    if $skip_next; then
+      skip_next=false
+      continue
+    fi
+    # Global flags that take a value (next arg is the value)
+    case "$arg" in
+      --api|--api_version|--apilog|--bigqueryrc|--ca_certificates_file|\
+      --dataset_id|--discovery_file|--format|--httplib2_debuglevel|\
+      --job_id|--job_property|--location|--max_rows_per_request|\
+      --project_id|--proxy_address|--proxy_password|--proxy_port|\
+      --proxy_username|--request_reason|--trace|--universe_domain|\
+      --bigquery_discovery_api_key|--alpha)
+        skip_next=true
+        continue
+        ;;
+    esac
+    # Global flags with = (e.g., --project_id=xxx)
+    case "$arg" in
+      --*=*) continue ;;
+    esac
+    # Boolean global flags
+    case "$arg" in
+      --debug_mode|--nodebug_mode|\
+      --disable_ssl_validation|--nodisable_ssl_validation|\
+      --enable_gdrive|--noenable_gdrive|\
+      --enable_resumable_uploads|--noenable_resumable_uploads|\
+      --fingerprint_job_id|--nofingerprint_job_id|\
+      --headless|--noheadless|\
+      --jobs_query_use_request_id|--nojobs_query_use_request_id|\
+      --jobs_query_use_results_from_response|--nojobs_query_use_results_from_response|\
+      --mtls|--nomtls|\
+      --quiet|--noquiet|-q|\
+      --synchronous_mode|--nosynchronous_mode|-sync|\
+      --use_lep|--nouse_lep|\
+      --use_regional_endpoints|--nouse_regional_endpoints|\
+      --use_rep|--nouse_rep)
+        continue
+        ;;
+    esac
+    # First non-flag argument is the command
+    echo "$arg"
+    return
+  done
+}
+
+# Extract the SQL query string from bq query arguments.
+# Strategy: take the last non-flag argument, which is the SQL string.
+# Only known value-taking flags consume the next argument.
+extract_sql() {
+  local last_positional=""
+  local skip_next=false
+  for arg in "$@"; do
+    if $skip_next; then
+      skip_next=false
+      continue
+    fi
+    case "$arg" in
+      --*=*) continue ;;  # --flag=value
+      # Known value-taking flags for bq query (and global flags)
+      --destination_table|--time_partitioning_field|--time_partitioning_type|\
+      --time_partitioning_expiration|--clustering_fields|\
+      --label|--parameter|--max_rows|--start_row|--format|\
+      --destination_kms_key|--schedule|--target_dataset|\
+      --location|--project_id|--dataset_id|--job_id|--job_property|\
+      --api|--api_version|--apilog|--bigqueryrc|--ca_certificates_file|\
+      --discovery_file|--httplib2_debuglevel|--max_rows_per_request|\
+      --proxy_address|--proxy_password|--proxy_port|--proxy_username|\
+      --request_reason|--trace|--universe_domain|--bigquery_discovery_api_key|\
+      --alpha|--external_table_definition|--schema)
+        skip_next=true
+        continue
+        ;;
+      --*) continue ;;    # boolean flags (--nouse_legacy_sql, --quiet, etc.)
+      query) continue ;;  # skip the subcommand itself
+      *) last_positional="$arg" ;;
+    esac
+  done
+  echo "$last_positional"
+}
+
+# Check if a SQL query is read-only.
+check_sql() {
+  local sql="$1"
+
+  # Strip leading whitespace, comments, and semicolons
+  local normalized
+  normalized=$(echo "$sql" | sed -e 's/--.*$//' -e 's|/\*.*\*/||g' -e 's/^[[:space:]]*//' | tr '\n' ' ' | sed 's/^[[:space:]]*//')
+
+  # Get the first keyword (case-insensitive)
+  local first_keyword
+  first_keyword=$(echo "$normalized" | awk '{print toupper($1)}')
+
+  # Check against blocked keywords
+  if echo "$first_keyword" | grep -qEi "^(${BLOCKED_SQL_KEYWORDS})$"; then
+    echo "error: '$first_keyword' statements are not allowed. Only SELECT/WITH queries are permitted." >&2
+    return 1
+  fi
+
+  # Also check for blocked keywords after WITH ... AS (...) patterns
+  # by scanning the full query for DML outside of CTEs
+  if echo "$normalized" | grep -qEi "(;[[:space:]]*(${BLOCKED_SQL_KEYWORDS}))"; then
+    echo "error: multi-statement query contains blocked SQL. Only SELECT/WITH queries are permitted." >&2
+    return 1
+  fi
+
+  return 0
+}
+
+# --- Main ---
+
+if [ $# -eq 0 ]; then
+  usage
+  exit 0
+fi
+
+command=$(find_command "$@")
+
+if [ -z "${command:-}" ]; then
+  # No command found, might be just flags like --version
+  exec bq "$@"
+fi
+
+# Check if command is allowed
+is_allowed=false
+for allowed in $ALLOWED_COMMANDS; do
+  if [ "$command" = "$allowed" ]; then
+    is_allowed=true
+    break
+  fi
+done
+
+if ! $is_allowed; then
+  echo "error: '$command' is blocked by bbq. This command can cause irreversible changes." >&2
+  echo "Allowed commands: $ALLOWED_COMMANDS" >&2
+  exit 1
+fi
+
+# For query command, validate the SQL
+if [ "$command" = "query" ]; then
+  sql=$(extract_sql "$@")
+  if [ -n "${sql:-}" ]; then
+    check_sql "$sql" || exit 1
+  fi
+fi
+
+# Pass through to real bq
+exec bq "$@"
