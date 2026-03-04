@@ -44,7 +44,13 @@ $ bbq
 
 ### 3. Give it to your AI agent
 
-In Claude Code, prefix any BigQuery command with `!bbq`:
+In Claude Code (or any AI coding agent), just run `!bbq` with no arguments. The usage guide is printed directly into the conversation — **the agent reads it and learns what it can and can't do.**
+
+```
+> !bbq
+```
+
+That's it. The agent now knows how to use `bbq` safely. It will run commands like:
 
 ```
 > !bbq ls
@@ -52,7 +58,7 @@ In Claude Code, prefix any BigQuery command with `!bbq`:
 > !bbq show my_dataset.users
 ```
 
-Your agent gets full read access to BigQuery. Nothing more.
+No manual prompting needed. The tool teaches itself to the agent.
 
 ## What happens when it blocks
 
