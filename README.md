@@ -22,37 +22,17 @@ or
 curl -fsSL https://raw.githubusercontent.com/tim-watcha/bbq/main/install.sh | bash
 ```
 
-### 2. Use it
+### 2. Give it to your AI agent
 
-Just run `bbq` to see what it can do:
-
-```
-$ bbq
-
-  👶 bbq (BaBigQuery)
-  Too young to do anything dangerous.
-
-  Usage:
-    bbq <command> [flags] [args]
-
-  Examples:
-    bbq query --nouse_legacy_sql 'SELECT * FROM dataset.table LIMIT 10'
-    bbq ls
-    bbq show dataset.table
-    ...
-```
-
-### 3. Give it to your AI agent
-
-In Claude Code (or any AI coding agent), just run `!bbq` with no arguments. The usage guide is printed directly into the conversation — **the agent reads it and learns what it can and can't do.**
+In Claude Code (or any AI coding agent), run `!bbq` with no arguments:
 
 ```
 > !bbq
 ```
 
-That's it. Now just talk to your agent about BigQuery — it knows what to do.
+The usage guide is printed directly into the conversation — **the agent reads it and learns what it can and can't do.** No manual prompting needed. The tool teaches itself to the agent.
 
-No manual prompting needed. The tool teaches itself to the agent.
+Now just talk to your agent about BigQuery — it knows what to do.
 
 ## What happens when it blocks
 
