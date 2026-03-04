@@ -29,11 +29,19 @@ error: '--destination_table=my_dataset.copy' is blocked in safe query mode.
 
 ## Install
 
+### Homebrew
+
+```bash
+brew install tim-watcha/bbq/bbq
+```
+
+### curl
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/tim-watcha/bbq/main/install.sh | bash
 ```
 
-Or manually:
+### Manual
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/tim-watcha/bbq/main/bbq -o /usr/local/bin/bbq
