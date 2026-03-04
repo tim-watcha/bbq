@@ -72,14 +72,6 @@ $ bbq query --destination_table=my_dataset.copy 'SELECT * FROM source'
 
 **Query flags**: `--destination_table`, `--replace`, `--append_table`, `--schedule`, `--target_dataset`, `--destination_kms_key`, `--time_partitioning_*`, `--clustering_fields`
 
-## Auditing blocked attempts
-
-Blocked commands are printed to stderr. Keep an audit trail by redirecting:
-
-```bash
-bbq query 'SELECT 1' 2>> ~/.bbq/audit.log
-```
-
 ## Limitations
 
 `bbq` is a safety net, not a security boundary.
