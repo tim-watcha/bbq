@@ -32,6 +32,17 @@ LICENSE                          # MIT license
 
 `rm`, `truncate`, `undelete`, `update`, `insert`, `load`, `cp`, `cancel`, `partition`, `add-iam-policy-binding`, `remove-iam-policy-binding`, `set-iam-policy`, `shell`
 
+## Releasing a new version
+
+1. Update `CHANGELOG.md`
+2. Commit and push to main
+3. Create a GitHub release: `gh release create vX.Y.Z --repo tim-watcha/bbq`
+4. Get the new tarball sha256: `curl -fsSL https://github.com/tim-watcha/bbq/archive/refs/tags/vX.Y.Z.tar.gz | shasum -a 256`
+5. Update the Homebrew formula in the **separate** repo `tim-watcha/homebrew-bbq`:
+   - Update `url` to the new tag
+   - Update `sha256` to the new hash
+   - Commit and push
+
 ## Testing
 
 Run `./test.sh`. When adding new blocked commands/flags, always add corresponding test cases.
