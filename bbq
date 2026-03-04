@@ -10,19 +10,55 @@ ALLOWED_COMMANDS="query ls show head mk mkdef extract get-iam-policy version hel
 
 usage() {
   cat <<'EOF'
-bbq (BaBigQuery): Too young to do anything dangerous.
 
-Usage: bbq [--global_flags] <command> [--command_flags] [args]
+  👶 bbq (BaBigQuery)
+  Too young to do anything dangerous.
 
-Allowed commands:
-  query (SELECT/WITH only), ls, show, head, mk, mkdef, extract,
-  get-iam-policy, version, help, info, wait, init
+  A safe wrapper around bq that blocks irreversible operations.
+  All flags are passed through to the real bq CLI.
 
-Blocked (irreversible) commands:
-  rm, truncate, undelete, update, insert, load, cp, cancel, partition,
-  add-iam-policy-binding, remove-iam-policy-binding, set-iam-policy, shell
+  Usage:
+    bbq <command> [flags] [args]
 
-All flags are passed through to the real bq CLI.
+  Examples:
+    bbq query --nouse_legacy_sql 'SELECT * FROM dataset.table LIMIT 10'
+    bbq ls
+    bbq show dataset.table
+    bbq head -n 5 dataset.table
+    bbq mk my_new_dataset
+
+  Allowed commands:
+    query         Run SELECT/WITH queries (DML/DDL blocked)
+    ls            List datasets, tables, jobs, etc.
+    show          View resource metadata
+    head          Preview table rows
+    mk            Create datasets, tables, views
+    mkdef         Create external table definitions
+    extract       Export table data to GCS
+    get-iam-policy View IAM policies
+    version       Show bq version
+    help          Show bq help
+    info          Show bq client info
+    wait          Wait for a job to complete
+    init          Initialize bq configuration
+
+  Blocked commands (irreversible):
+    rm, truncate, undelete, update, insert, load, cp, cancel,
+    partition, set-iam-policy, add/remove-iam-policy-binding, shell
+
+  Blocked SQL:
+    Only SELECT and WITH queries are allowed.
+    INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, MERGE, EXECUTE,
+    TRUNCATE, CALL, GRANT, REVOKE are all blocked.
+    Semicolons are forbidden (no multi-statement queries).
+
+  Blocked query flags:
+    --destination_table, --replace, --append_table, --schedule,
+    --target_dataset, --destination_kms_key, --clustering_fields,
+    --time_partitioning_*
+
+  More info: https://github.com/tim-watcha/bbq
+
 EOF
 }
 
