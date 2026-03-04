@@ -15,7 +15,7 @@ assert_not_blocked() {
   shift
   local output
   output=$("$BBQ" "$@" 2>&1 || true)
-  if echo "$output" | grep -q "is blocked by bbq\|is not allowed\|blocked in safe query mode\|semicolons are not allowed"; then
+  if echo "$output" | grep -q "bbq blocked"; then
     echo "FAIL (bbq blocked):  $description"
     FAIL=$((FAIL + 1))
   else

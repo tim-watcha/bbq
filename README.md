@@ -58,13 +58,13 @@ No manual prompting needed. The tool teaches itself to the agent.
 
 ```
 $ bbq rm my_dataset.my_table
-error: 'rm' is blocked by bbq. This command can cause irreversible changes.
+👶 bbq blocked: 'rm' can cause irreversible changes.
 
 $ bbq query 'DROP TABLE my_dataset.my_table'
-error: 'DROP' is not allowed. Only SELECT/WITH queries are permitted.
+👶 bbq blocked: 'DROP' is not allowed. Only SELECT/WITH queries are permitted.
 
 $ bbq query --destination_table=my_dataset.copy 'SELECT * FROM source'
-error: '--destination_table=my_dataset.copy' is blocked in safe query mode.
+👶 bbq blocked: '--destination_table=...' is a write-related flag.
 ```
 
 ## What's allowed

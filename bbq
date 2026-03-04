@@ -153,7 +153,7 @@ extract_sql() {
     fi
 
     if is_blocked_query_flag "$arg"; then
-      echo "error: '$arg' is blocked in safe query mode. Only read-only query options are allowed." >&2
+      echo "👶 bbq blocked: '$arg' is a write-related flag. Only read-only query options are allowed." >&2
       return 1
     fi
 
@@ -175,7 +175,7 @@ extract_sql() {
         if [ -z "${sql:-}" ]; then
           sql="$arg"
         else
-          echo "error: multiple positional SQL arguments are not allowed in safe query mode." >&2
+          echo "👶 bbq blocked: multiple positional SQL arguments are not allowed." >&2
           return 1
         fi
         ;;
@@ -198,13 +198,13 @@ check_sql() {
     | sed -e 's/[[:space:]]\{2,\}/ /g')
 
   if [ -z "$normalized" ]; then
-    echo "error: empty SQL query is not allowed." >&2
+    echo "👶 bbq blocked: empty SQL query is not allowed." >&2
     return 1
   fi
 
   # Reject any semicolon (prevents multi-statement attacks)
   if [[ "$normalized" == *";"* ]]; then
-    echo "error: semicolons are not allowed in safe query mode." >&2
+    echo "👶 bbq blocked: semicolons are not allowed. No multi-statement queries." >&2
     return 1
   fi
 
@@ -213,7 +213,7 @@ check_sql() {
   first_keyword=$(printf '%s' "$normalized" | awk '{print toupper($1)}')
 
   if [ "$first_keyword" != "SELECT" ] && [ "$first_keyword" != "WITH" ]; then
-    echo "error: '$first_keyword' is not allowed. Only SELECT/WITH queries are permitted." >&2
+    echo "👶 bbq blocked: '$first_keyword' is not allowed. Only SELECT/WITH queries are permitted." >&2
     return 1
   fi
 
@@ -244,8 +244,8 @@ for allowed in $ALLOWED_COMMANDS; do
 done
 
 if ! $is_allowed; then
-  echo "error: '$command' is blocked by bbq. This command can cause irreversible changes." >&2
-  echo "Allowed commands: $ALLOWED_COMMANDS" >&2
+  echo "👶 bbq blocked: '$command' can cause irreversible changes." >&2
+  echo "   Allowed commands: $ALLOWED_COMMANDS" >&2
   exit 1
 fi
 
@@ -253,7 +253,7 @@ fi
 if [ "$command" = "query" ]; then
   sql=$(extract_sql "$@") || exit 1
   if [ -z "${sql:-}" ]; then
-    echo "error: no SQL statement found for query." >&2
+    echo "👶 bbq blocked: no SQL statement found for query." >&2
     exit 1
   fi
   check_sql "$sql" || exit 1
