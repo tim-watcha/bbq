@@ -3,7 +3,7 @@
 [![Test](https://github.com/tim-watcha/bbq/actions/workflows/test.yml/badge.svg)](https://github.com/tim-watcha/bbq/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Too young to do anything dangerous.**
+## **Too young to do anything dangerous.**
 
 `bbq` is an **AI-first BigQuery safety wrapper**.
 It lets your AI agent use `bq` with guardrails: safe reads, blocked destructive actions.
