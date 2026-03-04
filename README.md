@@ -1,22 +1,62 @@
-# bbq (BaBigQuery)
+# 👶 bbq (BaBigQuery)
 
 [![Test](https://github.com/tim-watcha/bbq/actions/workflows/test.yml/badge.svg)](https://github.com/tim-watcha/bbq/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> Too young to do anything dangerous.
+**Too young to do anything dangerous.**
 
-A safe wrapper around Google Cloud's `bq` CLI that blocks irreversible operations. You can query, create, and export freely — but destructive actions like drop, delete, insert, and overwrite are blocked.
+Give your AI agent access to BigQuery — without the fear.
+`bbq` wraps the `bq` CLI and blocks every irreversible operation. Drop, delete, insert, overwrite? Nope. Query, list, export? Go ahead.
 
-## Demo
+## Quick start
+
+### 1. Install
+
+```bash
+brew install tim-watcha/bbq/bbq
+```
+
+or
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tim-watcha/bbq/main/install.sh | bash
+```
+
+### 2. Use it
+
+Just run `bbq` to see what it can do:
 
 ```
-$ bbq query --nouse_legacy_sql 'SELECT 1 AS hello'
-+-------+
-| hello |
-+-------+
-|     1 |
-+-------+
+$ bbq
 
+  👶 bbq (BaBigQuery)
+  Too young to do anything dangerous.
+
+  Usage:
+    bbq <command> [flags] [args]
+
+  Examples:
+    bbq query --nouse_legacy_sql 'SELECT * FROM dataset.table LIMIT 10'
+    bbq ls
+    bbq show dataset.table
+    ...
+```
+
+### 3. Give it to your AI agent
+
+In Claude Code, prefix any BigQuery command with `!bbq`:
+
+```
+> !bbq ls
+> !bbq query --nouse_legacy_sql 'SELECT count(*) FROM my_dataset.users'
+> !bbq show my_dataset.users
+```
+
+Your agent gets full read access to BigQuery. Nothing more.
+
+## What happens when it blocks
+
+```
 $ bbq rm my_dataset.my_table
 error: 'rm' is blocked by bbq. This command can cause irreversible changes.
 
@@ -25,38 +65,6 @@ error: 'DROP' is not allowed. Only SELECT/WITH queries are permitted.
 
 $ bbq query --destination_table=my_dataset.copy 'SELECT * FROM source'
 error: '--destination_table=my_dataset.copy' is blocked in safe query mode.
-```
-
-## Install
-
-### Homebrew
-
-```bash
-brew install tim-watcha/bbq/bbq
-```
-
-### curl
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/tim-watcha/bbq/main/install.sh | bash
-```
-
-### Manual
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/tim-watcha/bbq/main/bbq -o /usr/local/bin/bbq
-chmod +x /usr/local/bin/bbq
-```
-
-## Usage
-
-Use `bbq` wherever you'd use `bq`. All flags are passed through as-is.
-
-```bash
-bbq query --nouse_legacy_sql 'SELECT * FROM dataset.table LIMIT 10'
-bbq ls
-bbq show dataset.table
-bbq head -n 5 dataset.table
 ```
 
 ## What's allowed
@@ -74,37 +82,19 @@ bbq head -n 5 dataset.table
 
 ## What's blocked
 
-### Subcommands
+**Subcommands**: `rm`, `truncate`, `undelete`, `update`, `insert`, `load`, `cp`, `cancel`, `partition`, `add/remove/set-iam-policy-binding`, `shell`
 
-`rm`, `truncate`, `undelete`, `update`, `insert`, `load`, `cp`, `cancel`, `partition`, `add-iam-policy-binding`, `remove-iam-policy-binding`, `set-iam-policy`, `shell`
+**SQL**: Only `SELECT` and `WITH` are allowed as the first keyword. Semicolons are forbidden entirely.
 
-### SQL statements
-
-Only `SELECT` and `WITH` are allowed as the first keyword. Everything else is blocked, including `INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `TRUNCATE`, `MERGE`, `CREATE`, `EXECUTE`, `CALL`, `GRANT`, `REVOKE`.
-
-Semicolons are entirely forbidden to prevent multi-statement attacks like `SELECT 1; DROP TABLE x`.
-
-### Write-related query flags
-
-`--destination_table`, `--replace`, `--append_table`, `--schedule`, `--target_dataset`, `--destination_kms_key`, `--time_partitioning_*`, `--clustering_fields`
+**Query flags**: `--destination_table`, `--replace`, `--append_table`, `--schedule`, `--target_dataset`, `--destination_kms_key`, `--time_partitioning_*`, `--clustering_fields`
 
 ## How it works
 
-bbq is a single shell script that:
+bbq is a single shell script. No dependencies beyond `bq` and a POSIX shell.
 
-1. Parses the `bq` subcommand from arguments
-2. Checks it against a whitelist of allowed commands
-3. For `query`, validates that the SQL starts with `SELECT` or `WITH`
-4. Blocks write-related flags like `--destination_table`
-5. If everything is safe, passes all arguments through to the real `bq`
-
-No dependencies beyond `bq` itself and a POSIX shell.
-
-## Testing
-
-```bash
-./test.sh
-```
+1. Parse the subcommand → check against whitelist
+2. For `query` → validate SQL starts with `SELECT`/`WITH`, no semicolons, no write flags
+3. If safe → pass everything through to the real `bq`
 
 ## Contributing
 
@@ -113,7 +103,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Uninstall
 
 ```bash
-sudo rm /usr/local/bin/bbq
+brew uninstall bbq        # if installed via brew
+sudo rm /usr/local/bin/bbq  # if installed via curl
 ```
 
 ## License
