@@ -5,7 +5,6 @@ class Bbq < Formula
   sha256 "70887edb65def0afd699a60e9bfde4bf5d6f3f63040a056f68820e7a9ac792bf"
   license "MIT"
 
-  depends_on "google-cloud-sdk" => :recommended
 
   def install
     bin.install "bbq"
