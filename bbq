@@ -8,9 +8,6 @@ set -euo pipefail
 
 ALLOWED_COMMANDS="query ls show head mk mkdef extract get-iam-policy version help info wait init"
 
-# SQL statements that are blocked in `bq query`
-BLOCKED_SQL_KEYWORDS="INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|MERGE|CREATE|CALL|GRANT|REVOKE"
-
 usage() {
   cat <<'EOF'
 bbq (BaBigQuery): Too young to do anything dangerous.
@@ -79,24 +76,55 @@ find_command() {
   done
 }
 
+# Check if a query flag implies a write/side-effect operation.
+is_blocked_query_flag() {
+  case "$1" in
+    --destination_table|--destination_table=*|\
+    --replace|--replace=*|\
+    --append_table|--append_table=*|\
+    --schedule|--schedule=*|\
+    --target_dataset|--target_dataset=*|\
+    --destination_kms_key|--destination_kms_key=*|\
+    --time_partitioning_field|--time_partitioning_field=*|\
+    --time_partitioning_type|--time_partitioning_type=*|\
+    --time_partitioning_expiration|--time_partitioning_expiration=*|\
+    --clustering_fields|--clustering_fields=*)
+      return 0
+      ;;
+    *) return 1 ;;
+  esac
+}
+
 # Extract the SQL query string from bq query arguments.
-# Strategy: take the last non-flag argument, which is the SQL string.
-# Only known value-taking flags consume the next argument.
+# Also checks for blocked write-related flags.
+# Errors if multiple positional args are found after "query".
 extract_sql() {
-  local last_positional=""
+  local sql=""
   local skip_next=false
+  local seen_command=false
+
   for arg in "$@"; do
+    if ! $seen_command; then
+      if [ "$arg" = "query" ]; then
+        seen_command=true
+      fi
+      continue
+    fi
+
     if $skip_next; then
       skip_next=false
       continue
     fi
+
+    if is_blocked_query_flag "$arg"; then
+      echo "error: '$arg' is blocked in safe query mode. Only read-only query options are allowed." >&2
+      return 1
+    fi
+
     case "$arg" in
       --*=*) continue ;;  # --flag=value
       # Known value-taking flags for bq query (and global flags)
-      --destination_table|--time_partitioning_field|--time_partitioning_type|\
-      --time_partitioning_expiration|--clustering_fields|\
       --label|--parameter|--max_rows|--start_row|--format|\
-      --destination_kms_key|--schedule|--target_dataset|\
       --location|--project_id|--dataset_id|--job_id|--job_property|\
       --api|--api_version|--apilog|--bigqueryrc|--ca_certificates_file|\
       --discovery_file|--httplib2_debuglevel|--max_rows_per_request|\
@@ -107,35 +135,49 @@ extract_sql() {
         continue
         ;;
       --*) continue ;;    # boolean flags (--nouse_legacy_sql, --quiet, etc.)
-      query) continue ;;  # skip the subcommand itself
-      *) last_positional="$arg" ;;
+      *)
+        if [ -z "${sql:-}" ]; then
+          sql="$arg"
+        else
+          echo "error: multiple positional SQL arguments are not allowed in safe query mode." >&2
+          return 1
+        fi
+        ;;
     esac
   done
-  echo "$last_positional"
+
+  printf '%s\n' "$sql"
 }
 
-# Check if a SQL query is read-only.
+# Check if a SQL query is safe.
+# Whitelist approach: only SELECT and WITH are allowed as the first keyword.
+# Semicolons are entirely forbidden to prevent multi-statement attacks.
 check_sql() {
   local sql="$1"
 
-  # Strip leading whitespace, comments, and semicolons
+  # Normalize: collapse newlines, strip comments, trim whitespace
   local normalized
-  normalized=$(echo "$sql" | sed -e 's/--.*$//' -e 's|/\*.*\*/||g' -e 's/^[[:space:]]*//' | tr '\n' ' ' | sed 's/^[[:space:]]*//')
+  normalized=$(printf '%s' "$sql" | tr '\n' ' ' \
+    | sed -e 's|/\*.*\*/||g' -e 's/--.*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+    | sed -e 's/[[:space:]]\{2,\}/ /g')
 
-  # Get the first keyword (case-insensitive)
-  local first_keyword
-  first_keyword=$(echo "$normalized" | awk '{print toupper($1)}')
-
-  # Check against blocked keywords
-  if echo "$first_keyword" | grep -qEi "^(${BLOCKED_SQL_KEYWORDS})$"; then
-    echo "error: '$first_keyword' statements are not allowed. Only SELECT/WITH queries are permitted." >&2
+  if [ -z "$normalized" ]; then
+    echo "error: empty SQL query is not allowed." >&2
     return 1
   fi
 
-  # Also check for blocked keywords after WITH ... AS (...) patterns
-  # by scanning the full query for DML outside of CTEs
-  if echo "$normalized" | grep -qEi "(;[[:space:]]*(${BLOCKED_SQL_KEYWORDS}))"; then
-    echo "error: multi-statement query contains blocked SQL. Only SELECT/WITH queries are permitted." >&2
+  # Reject any semicolon (prevents multi-statement attacks)
+  if [[ "$normalized" == *";"* ]]; then
+    echo "error: semicolons are not allowed in safe query mode." >&2
+    return 1
+  fi
+
+  # First keyword must be SELECT or WITH
+  local first_keyword
+  first_keyword=$(printf '%s' "$normalized" | awk '{print toupper($1)}')
+
+  if [ "$first_keyword" != "SELECT" ] && [ "$first_keyword" != "WITH" ]; then
+    echo "error: '$first_keyword' is not allowed. Only SELECT/WITH queries are permitted." >&2
     return 1
   fi
 
@@ -171,12 +213,14 @@ if ! $is_allowed; then
   exit 1
 fi
 
-# For query command, validate the SQL
+# For query command, validate flags and SQL
 if [ "$command" = "query" ]; then
-  sql=$(extract_sql "$@")
-  if [ -n "${sql:-}" ]; then
-    check_sql "$sql" || exit 1
+  sql=$(extract_sql "$@") || exit 1
+  if [ -z "${sql:-}" ]; then
+    echo "error: no SQL statement found for query." >&2
+    exit 1
   fi
+  check_sql "$sql" || exit 1
 fi
 
 # Pass through to real bq

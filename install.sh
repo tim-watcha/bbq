@@ -7,14 +7,21 @@ BINARY_NAME="bbq"
 
 echo "Installing bbq (BaBigQuery)..."
 
-# Check if bq is installed
+# Check dependencies
 if ! command -v bq &>/dev/null; then
   echo "error: bq CLI not found. Install Google Cloud SDK first." >&2
   exit 1
 fi
 
+if ! command -v curl &>/dev/null; then
+  echo "error: curl is required to download bbq." >&2
+  exit 1
+fi
+
 # Download
 TMPFILE=$(mktemp)
+trap 'rm -f "$TMPFILE"' EXIT
+
 curl -fsSL "https://raw.githubusercontent.com/${REPO}/main/bbq" -o "$TMPFILE"
 
 # Install
@@ -24,8 +31,6 @@ else
   echo "Need sudo to install to ${INSTALL_DIR}"
   sudo install -m 755 "$TMPFILE" "${INSTALL_DIR}/${BINARY_NAME}"
 fi
-
-rm -f "$TMPFILE"
 
 echo "Done! Installed to ${INSTALL_DIR}/${BINARY_NAME}"
 echo "Run 'bbq' to get started."
