@@ -2,7 +2,7 @@
 
 Too young to do anything dangerous.
 
-A read-only wrapper around Google Cloud's `bq` CLI. Blocks irreversible operations like delete, modify, and write — only safe, read-oriented commands are allowed.
+A safe wrapper around Google Cloud's `bq` CLI that blocks irreversible operations. You can query, create, and export freely — but destructive actions like drop, delete, insert, and overwrite are blocked.
 
 ## Install
 

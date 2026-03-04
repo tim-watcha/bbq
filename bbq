@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# bbq (BaBigQuery): A read-only wrapper around the bq CLI.
+# bbq (BaBigQuery): A safe wrapper around the bq CLI.
 # Too young to do anything dangerous.
-# Blocks irreversible operations (delete, modify, write) while allowing
-# queries (SELECT/WITH only), listing, and other safe commands.
+# Blocks irreversible operations (delete, drop, overwrite, modify) while
+# allowing queries, listing, creation, export, and other safe commands.
 
 ALLOWED_COMMANDS="query ls show head mk mkdef extract get-iam-policy version help info wait init"
 
