@@ -50,13 +50,7 @@ In Claude Code (or any AI coding agent), just run `!bbq` with no arguments. The 
 > !bbq
 ```
 
-That's it. The agent now knows how to use `bbq` safely. It will run commands like:
-
-```
-> !bbq ls
-> !bbq query --nouse_legacy_sql 'SELECT count(*) FROM my_dataset.users'
-> !bbq show my_dataset.users
-```
+That's it. Now just talk to your agent about BigQuery — it knows what to do.
 
 No manual prompting needed. The tool teaches itself to the agent.
 
